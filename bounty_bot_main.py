@@ -51,6 +51,7 @@ def bounties_insert_gsheet(new_bounty):
 
 
 def bounties_query():
+    print('bounties query')
     cred=load_creds()
     con_string = '''mongodb+srv://{}:{}@bountycbl-nxean.mongodb.net/test?retryWrites=true&w=majority'''.format(cred.user, cred.password)
     client = MongoClient(con_string)
@@ -115,6 +116,7 @@ class MyClient(discord.Client):
     async def my_background_task(self):
         await self.wait_until_ready()
         while not self.is_closed():
+            #print('loop start')
             db_bounties = []
             new_bounties = []
             g_new_bounties = []
@@ -128,39 +130,42 @@ class MyClient(discord.Client):
             async for guild in client.fetch_guilds(limit=150):
                 if (guild.name, guild.id) not in guild_list:
                     guild_list.append((guild.name, guild.id))
+            #print(guild_list)
             for i in guild_list:
+                #print(i)
                 guild = client.get_guild(i[1])
-                bans = await guild.bans()
-                if len(bans) >= 1:
-                    for ban in bans:
-                        if ban[1].id not in db_bounties: #This part will add new bounties
-                            id = ban[1].id
-                            name = ban[1]
-                            nb = {'_id':ban[1].id, 'name': ban[1].name, 'bans': [{'guildid': guild.id, 'guildname':guild.name, 'reason': ban[0]}]}
-                            new_bounties.append(nb) #
-                            db_bounties.append(ban[1].id) #Aappend the new banned id number to the db_table, next iteration this list will be emptied anyways
-                            gbans = '({},{})'.format(guild.name, ban[0])
-                            g_sheetupdate = [str(ban[1].id), ban[1].name, gbans]
-                            g_new_bounties.append(g_sheetupdate)
+                try:
+                    bans = await guild.bans()
+                    if len(bans) >= 1:
+                        for ban in bans:
+                            if ban[1].id not in db_bounties: #This part will add new bounties
+                                #print(i, ban)
+                                id = ban[1].id
+                                name = ban[1]
+                                nb = {'_id':ban[1].id, 'name': ban[1].name, 'bans': [{'guildid': guild.id, 'guildname':guild.name, 'reason': ban[0]}]}
+                                new_bounties.append(nb) #
+                                db_bounties.append(ban[1].id) #Aappend the new banned id number to the db_table, next iteration this list will be emptied anyways
+                                gbans = '({},{})'.format(guild.name, ban[0])
+                                g_sheetupdate = [str(ban[1].id), ban[1].name, gbans]
+                                g_new_bounties.append(g_sheetupdate)
 
-
-                        else:
-                            #Build the query to check if current guild is in bounty's list of banned guild_list
-                            query={ "_id": ban[1].id}
-                            ban_guilds = []
-                            tstq=find_bounty(query) #Call the find_bounty and return all bans for the bounty
-                            for x in tstq:
-                                x_bans = x['bans']
-                                for i in x_bans:
-                                    ban_guilds.append(i['guildid']) #Add all banned guilds to temp list
-                            if guild.id not in ban_guilds:     #if bounty has a banned guild that is not in the list update Mongo and Update the google sheet1
-                                c_id= ban[1].id
-                                c_guild=guild.id
-                                c_name=guild.name
-                                c_reason=ban[0]
-                                update_bounties.append((c_id, c_guild, c_name, c_reason))
-
-
+                            else:
+                                #Build the query to check if current guild is in bounty's list of banned guild_list
+                                query={ "_id": ban[1].id}
+                                ban_guilds = []
+                                tstq=find_bounty(query) #Call the find_bounty and return all bans for the bounty
+                                for x in tstq:
+                                    x_bans = x['bans']
+                                    for i in x_bans:
+                                        ban_guilds.append(i['guildid']) #Add all banned guilds to temp list
+                                if guild.id not in ban_guilds:     #if bounty has a banned guild that is not in the list update Mongo and Update the google sheet1
+                                    c_id= ban[1].id
+                                    c_guild=guild.id
+                                    c_name=guild.name
+                                    c_reason=ban[0]
+                                    update_bounties.append((c_id, c_guild, c_name, c_reason))
+                except Exception as e:
+                    print(f' Issue with {guild}, likely bot permssions')
 
 
 
@@ -170,7 +175,7 @@ class MyClient(discord.Client):
                 update_db_bounty(update_bounties)
                 update_gbounty(update_bounties)
 
-
+            #print('loop end')
             await asyncio.sleep(60) # task runs every 60 seconds
 
 cred=load_creds()
