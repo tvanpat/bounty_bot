@@ -51,7 +51,6 @@ def bounties_insert_gsheet(new_bounty):
 
 
 def bounties_query():
-    print('bounties query')
     cred=load_creds()
     con_string = '''mongodb+srv://{}:{}@bountycbl-nxean.mongodb.net/test?retryWrites=true&w=majority'''.format(cred.user, cred.password)
     client = MongoClient(con_string)
@@ -79,7 +78,7 @@ def update_db_bounty(u_list):
         client = MongoClient(con_string)
         db = client.get_database(cred.database)
         bountycol=db['bounties']
-        bountycol.update_one({'_id':i[0]},{'$push':{'bans':{'guildid':i[1], 'guild_name':i[2],'reason':i[3]}}})
+        bountycol.update_one({'_id':i[0]},{'$push':{'bans':{'guildid':i[1], 'guildname':i[2],'reason':i[3]}}})
         client.close()
 
 def update_gbounty(u_list):
@@ -94,7 +93,6 @@ def update_gbounty(u_list):
         banned_guilds = sheet.row_values(c_loc)[2]
         new_ban = '({},{})'.format(i[2], i[3])
         banned_guilds = banned_guilds + new_ban
-        print(i)
         sheet.update_cell(c_loc, 3, banned_guilds)
 
 
@@ -130,9 +128,9 @@ class MyClient(discord.Client):
             async for guild in client.fetch_guilds(limit=150):
                 if (guild.name, guild.id) not in guild_list:
                     guild_list.append((guild.name, guild.id))
-            #print(guild_list)
+            print(guild_list)
             for i in guild_list:
-                #print(i)
+                print(i)
                 guild = client.get_guild(i[1])
                 try:
                     bans = await guild.bans()
@@ -176,7 +174,7 @@ class MyClient(discord.Client):
                 update_gbounty(update_bounties)
 
             #print('loop end')
-            await asyncio.sleep(60) # task runs every 60 seconds
+            await asyncio.sleep(300) # task runs every 60 seconds
 
 cred=load_creds()
 client = MyClient()
